@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yes/No Coding Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the game */
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation; /* Improves touch responsiveness */
+        }
+        .card {
+            background-color: white;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: transform 0.3s ease-in-out;
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+            border-radius: 1rem;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        .feedback-correct {
+            background-color: #10B981 !important; /* Green-500 */
+            color: white;
+            transform: scale(1.05);
+        }
+        .feedback-incorrect {
+            background-color: #EF4444 !important; /* Red-500 */
+            color: white;
+            transform: scale(1.05);
+        }
+        .progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="card w-full max-w-2xl p-6 md:p-10 text-center">
+        <!-- Header Section -->
+        <div id="header" class="mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">Coding Quiz: Yes or No?</h1>
+            <p class="text-gray-500 dark:text-gray-400">Test your basic coding knowledge!</p>
+            <div id="score-display" class="mt-4 text-lg font-semibold text-indigo-600 dark:text-indigo-400">Score: 0</div>
+        </div>
+
+        <!-- Question and Results Area -->
+        <div id="content-area">
+            <div id="question-area">
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-6">
+                    <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full progress-bar-inner" style="width: 0%"></div>
+                </div>
+                <p id="question-text" class="text-xl md:text-2xl font-medium text-gray-700 dark:text-gray-200 min-h-[100px] flex items-center justify-center">
+                    Loading question...
+                </p>
+            </div>
+
+            <div id="results-area" class="hidden">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-4">Quiz Complete!</h2>
+                <p class="text-xl text-gray-600 dark:text-gray-300 mb-2">Your final score is:</p>
+                <p id="final-score" class="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-8">0 / 10</p>
+                <button id="restart-btn" class="btn w-full md:w-auto bg-indigo-600 text-white font-bold py-3 px-8 text-lg">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Buttons Section -->
+        <div id="buttons-area" class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button id="yes-btn" class="btn bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 text-xl">
+                → Yes
+            </button>
+            <button id="no-btn" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 text-xl">
+                → No
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const questionTextEl = document.getElementById('question-text');
+        const scoreDisplayEl = document.getElementById('score-display');
+        const yesBtn = document.getElementById('yes-btn');
+        const noBtn = document.getElementById('no-btn');
+        const questionArea = document.getElementById('question-area');
+        const buttonsArea = document.getElementById('buttons-area');
+        const resultsArea = document.getElementById('results-area');
+        const finalScoreEl = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const progressBar = document.getElementById('progress-bar');
+        
+        // --- Game Questions ---
+        const questions = [
+            { question: "🔢 In coding, we can use numbers to do math.", answer: true },
+            { question: '📁 A file name in coding can have spaces like "my file.py".', answer: false },
+            { question: '🔤 Text in quotes like "Hello" is called a string.', answer: true },
+            { question: "📦 A variable is used to store information.", answer: true },
+            { question: "📝 Comments in code help people understand it.", answer: true },
+            { question: "🚫 You can use any symbol in a variable name, like @, !, or #.", answer: false },
+            { question: "🔁 A loop helps us repeat actions.", answer: true },
+            { question: "⚠️ Computers understand code even if we make spelling mistakes.", answer: false },
+            { question: "✅ Indentation (spaces at the start of a line) is important in coding.", answer: true }
+        ];
+
+        // --- Game State ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let questionsShuffled = [];
+
+        // --- Functions ---
+
+        /**
+         * Shuffles the questions array to randomize order.
+         */
+        function shuffleQuestions() {
+            questionsShuffled = [...questions].sort(() => Math.random() - 0.5);
+        }
+
+        /**
+         * Resets the game state and starts a new quiz.
+         */
+        function startGame() {
+            // Reset state
+            currentQuestionIndex = 0;
+            score = 0;
+            shuffleQuestions();
+            
+            // Reset UI
+            scoreDisplayEl.textContent = `Score: ${score}`;
+            resultsArea.classList.add('hidden');
+            questionArea.classList.remove('hidden');
+            buttonsArea.classList.remove('hidden');
+            
+            // Display the first question
+            displayQuestion();
+        }
+
+        /**
+         * Displays the current question and updates the progress bar.
+         */
+        function displayQuestion() {
+            if (currentQuestionIndex < questionsShuffled.length) {
+                const currentQuestion = questionsShuffled[currentQuestionIndex];
+                questionTextEl.textContent = currentQuestion.question;
+                
+                // Update progress bar
+                const progressPercentage = ((currentQuestionIndex) / questionsShuffled.length) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+            } else {
+                // End of the quiz
+                showResults();
+            }
+        }
+
+        /**
+         * Handles the user's answer selection.
+         * @param {boolean} userAnswer - The user's answer (true for Yes, false for No).
+         */
+        function handleAnswer(userAnswer) {
+            const correctAnswer = questionsShuffled[currentQuestionIndex].answer;
+            const buttonClicked = userAnswer ? yesBtn : noBtn;
+            const otherButton = userAnswer ? noBtn : yesBtn;
+
+            // Disable buttons to prevent multiple clicks
+            yesBtn.disabled = true;
+            noBtn.disabled = true;
+            otherButton.style.opacity = '0.5';
+
+            if (userAnswer === correctAnswer) {
+                // Correct answer
+                score++;
+                scoreDisplayEl.textContent = `Score: ${score}`;
+                buttonClicked.classList.add('feedback-correct');
+            } else {
+                // Incorrect answer
+                buttonClicked.classList.add('feedback-incorrect');
+            }
+
+            // Move to the next question after a delay
+            setTimeout(() => {
+                // Reset button styles
+                buttonClicked.classList.remove('feedback-correct', 'feedback-incorrect');
+                otherButton.style.opacity = '1';
+                yesBtn.disabled = false;
+                noBtn.disabled = false;
+                
+                currentQuestionIndex++;
+                displayQuestion();
+            }, 1200); // 1.2 second delay
+        }
+
+        /**
+         * Displays the final results at the end of the quiz.
+         */
+        function showResults() {
+            // Final progress bar update
+            progressBar.style.width = '100%';
+
+            // Hide question and buttons, show results
+            questionArea.classList.add('hidden');
+            buttonsArea.classList.add('hidden');
+            resultsArea.classList.remove('hidden');
+            
+            // Display final score
+            finalScoreEl.textContent = `${score} / ${questionsShuffled.length}`;
+        }
+
+        // --- Event Listeners ---
+        yesBtn.addEventListener('click', () => handleAnswer(true));
+        noBtn.addEventListener('click', () => handleAnswer(false));
+        restartBtn.addEventListener('click', startGame);
+
+        // --- Initial Game Start ---
+        window.onload = startGame;
+    </script>
+</body>
+</html>
